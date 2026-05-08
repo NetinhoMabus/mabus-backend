@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mabus · Monitor de Licitações</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e1a;--sf:#111827;--sf2:#1a2236;--sf3:#1f2d47;
+  --bd:#1e2d4a;--bd2:#243556;
+  --ac:#3b82f6;--ac2:#60a5fa;--glow:rgba(59,130,246,.15);
+  --gn:#10b981;--gdm:rgba(16,185,129,.12);
+  --rd:#ef4444;--rdm:rgba(239,68,68,.1);
+  --am:#f59e0b;--adm:rgba(245,158,11,.1);
+  --tx:#e2e8f0;--tx2:#94a3b8;--tx3:#475569;
+  --serif:'DM Serif Display',Georgia,serif;
+  --sans:'Outfit',sans-serif;
+  --mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(59,130,246,.03)1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.app{position:relative;z-index:1}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.login-box{background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:2.5rem;width:360px;text-align:center}
+.login-logo{font-family:var(--serif);font-size:2rem;letter-spacing:-.02em;margin-bottom:.25rem}
+.login-sub{font-family:var(--mono);font-size:.65rem;color:var(--ac);text-transform:uppercase;letter-spacing:.15em;margin-bottom:2rem}
+.login-input{width:100%;background:var(--sf2);border:1px solid var(--bd2);border-radius:8px;padding:.75rem 1rem;color:var(--tx);font-family:var(--mono);font-size:1rem;outline:none;text-align:center;letter-spacing:.15em;margin-bottom:1rem;transition:border-color .15s}
+.login-input:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--glow)}
+.login-btn{width:100%;background:var(--ac);border:none;color:#fff;border-radius:8px;padding:.75rem;font-family:var(--sans);font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s}
+.login-btn:hover{background:#2563eb;box-shadow:0 0 20px var(--glow)}
+.login-err{color:var(--rd);font-family:var(--mono);font-size:.72rem;margin-top:.75rem}
+
+/* HEADER */
+header{background:rgba(10,14,26,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);padding:0 2rem;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:baseline;gap:.5rem}
+.logo-m{font-family:var(--serif);font-size:1.4rem;letter-spacing:-.02em}
+.logo-t{font-family:var(--mono);font-size:.62rem;color:var(--ac);text-transform:uppercase;letter-spacing:.15em;padding:2px 8px;border:1px solid var(--ac);border-radius:2px}
+.hdr-r{display:flex;align-items:center;gap:.6rem}
+.live{width:7px;height:7px;border-radius:50%;background:var(--gn);box-shadow:0 0 8px var(--gn);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.sync-status{font-family:var(--mono);font-size:.62rem;color:var(--tx3);display:flex;align-items:center;gap:.4rem}
+.sync-status.syncing{color:var(--am)}
+.sync-status.ok{color:var(--gn)}
+.sync-status.err{color:var(--rd)}
+
+/* BTNS */
+.btn{font-family:var(--mono);font-size:.63rem;text-transform:uppercase;letter-spacing:.08em;padding:.42rem .9rem;border-radius:6px;cursor:pointer;transition:all .15s;border:1px solid var(--bd2);background:transparent;color:var(--tx2);display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap}
+.btn:hover{border-color:var(--ac);color:var(--ac)}
+.btn-p{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.btn-p:hover{background:#2563eb;border-color:#2563eb;box-shadow:0 0 20px var(--glow)}
+.btn-g{background:var(--gdm);border-color:var(--gn);color:var(--gn)}
+.btn-g:hover{background:var(--gn);color:#fff}
+.spin{display:inline-block;transition:transform .3s}
+.btn:hover .spin{transform:rotate(180deg)}
+
+main{padding:2rem;max-width:1440px;margin:0 auto}
+
+/* SETUP BANNER */
+.setup-banner{background:var(--adm);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:1rem 1.4rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.setup-banner-text{font-family:var(--mono);font-size:.72rem;color:var(--am)}
+.setup-banner h3{font-size:.85rem;font-weight:600;color:var(--am);margin-bottom:.25rem}
+
+/* WEEK SELECTOR */
+.week-bar{display:flex;align-items:center;gap:.75rem;margin-bottom:1.6rem;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:.75rem 1.2rem;flex-wrap:wrap}
+.ws-label{font-family:var(--mono);font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--tx2)}
+.ws-nav{display:flex;align-items:center;gap:.5rem}
+.ws-btn{background:transparent;border:1px solid var(--bd2);border-radius:5px;color:var(--tx2);cursor:pointer;font-size:.9rem;padding:2px 10px;transition:all .15s}
+.ws-btn:hover{border-color:var(--ac);color:var(--ac)}
+.ws-range{font-family:var(--mono);font-size:.78rem;color:var(--tx);min-width:160px;text-align:center}
+.ws-today{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;padding:3px 8px;border-radius:4px;border:1px solid var(--bd2);background:transparent;color:var(--tx3);cursor:pointer;transition:all .15s}
+.ws-today:hover{border-color:var(--ac);color:var(--ac)}
+
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--bd);margin-bottom:2rem}
+.tbtn{padding:.7rem 1.4rem;background:transparent;border:none;color:var(--tx2);cursor:pointer;font-family:var(--sans);font-size:.8rem;font-weight:500;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.tbtn.active{color:var(--ac2);border-bottom-color:var(--ac)}
+.tbtn:hover:not(.active){color:var(--tx)}
+.tc{display:none}.tc.active{display:block}
+
+/* SECTION */
+.stitle{font-family:var(--serif);font-size:1.45rem;letter-spacing:-.02em;margin-bottom:.2rem}
+.ssub{font-family:var(--mono);font-size:.68rem;color:var(--tx2);margin-bottom:1.5rem}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
+.kpi{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:1.4rem;position:relative;overflow:hidden;animation:fu .4s ease forwards;opacity:0}
+.kpi:nth-child(1){animation-delay:.05s}.kpi:nth-child(2){animation-delay:.1s}.kpi:nth-child(3){animation-delay:.15s}.kpi:nth-child(4){animation-delay:.2s}
+@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac)}
+.kpi.g::after{background:var(--gn)}.kpi.a::after{background:var(--am)}
+.kpi-lbl{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--tx2);margin-bottom:.6rem}
+.kpi-val{font-family:var(--serif);font-size:2rem;line-height:1;letter-spacing:-.03em;margin-bottom:.4rem}
+.kpi-val.sm{font-size:1.4rem}
+.kpi-d{font-family:var(--mono);font-size:.63rem;display:flex;align-items:center;gap:.3rem}
+.kpi-d.up{color:var(--gn)}.kpi-d.dn{color:var(--rd)}.kpi-d.nu{color:var(--tx3)}
+
+/* CHARTS */
+.crow{display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:2rem}
+.ccard{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:1.5rem}
+.ctitle{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--tx2);margin-bottom:1rem}
+.cwrap{position:relative;height:220px}
+
+/* INFO CARD */
+.info-card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:1.5rem;margin-bottom:2rem}
+.ileg{display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:.6rem;color:var(--tx2)}
+.ileg-dot{width:10px;height:10px;border-radius:2px}
+
+/* TABLES */
+.tsec{background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:2rem}
+.tbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:.5rem}
+.tfilters{display:flex;gap:.4rem;flex-wrap:wrap}
+.fbtn{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:4px;border:1px solid var(--bd2);background:transparent;color:var(--tx2);cursor:pointer;transition:all .15s}
+.fbtn:hover,.fbtn.act{border-color:var(--ac);color:var(--ac);background:var(--glow)}
+.dtbl{width:100%;border-collapse:collapse}
+.dtbl thead th{padding:.65rem 1rem;text-align:left;font-family:var(--mono);font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--tx3);border-bottom:1px solid var(--bd);background:var(--sf2);white-space:nowrap}
+.dtbl tbody tr{border-bottom:1px solid var(--bd);transition:background .12s}
+.dtbl tbody tr:hover{background:var(--sf2)}
+.dtbl tbody tr:last-child{border-bottom:none}
+.dtbl td{padding:.78rem 1rem;font-size:.78rem;vertical-align:middle}
+.tdname{font-weight:500;color:var(--tx);max-width:260px}
+.tdname small{display:block;font-size:.6rem;color:var(--tx3);font-family:var(--mono);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.58rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.p-h{background:rgba(59,130,246,.14);color:#60a5fa}
+.p-r{background:rgba(245,158,11,.14);color:#fbbf24}
+.p-a{background:rgba(16,185,129,.14);color:#34d399}
+.p-at{background:rgba(139,92,246,.14);color:#a78bfa}
+.p-c{background:rgba(239,68,68,.14);color:#f87171}
+.p-o{background:rgba(100,116,139,.14);color:#94a3b8}
+.mv{font-family:var(--mono);font-size:.72rem}
+.mv-ok{color:var(--gn)}.mv-p{color:var(--tx3);font-style:italic}
+.norow td{text-align:center;color:var(--tx3);font-family:var(--mono);font-size:.7rem;padding:2.5rem}
+.badge-auto{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:.57rem;color:var(--am);background:var(--adm);border:1px solid rgba(245,158,11,.3);border-radius:3px;padding:1px 6px}
+.badge-man{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:.57rem;color:var(--gn);background:var(--gdm);border:1px solid rgba(16,185,129,.3);border-radius:3px;padding:1px 6px}
+
+/* PLANILHAS */
+.xl-list{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+.xl-chip{display:inline-flex;align-items:center;gap:.4rem;background:var(--gdm);border:1px solid var(--gn);border-radius:4px;padding:3px 8px;font-family:var(--mono);font-size:.6rem;color:var(--gn)}
+.xl-del{cursor:pointer;opacity:.6;font-size:.7rem}.xl-del:hover{opacity:1;color:var(--rd)}
+
+/* SNAPS */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.scard{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:1rem}
+.sweek{font-family:var(--mono);font-size:.62rem;color:var(--ac);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
+.sbig{font-family:var(--serif);font-size:1.2rem;margin-bottom:.2rem}
+.ssm{font-family:var(--mono);font-size:.62rem;color:var(--tx2)}
+.ssm.g{color:var(--gn)}
+.sdel{font-family:var(--mono);font-size:.55rem;color:var(--rd);cursor:pointer;float:right;margin-top:2px;opacity:.5}
+.sdel:hover{opacity:1}
+
+/* CONFIG */
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.cfg-card{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:1.2rem}
+.cfg-title{font-family:var(--mono);font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--tx2);margin-bottom:.75rem}
+.cfg-select{width:100%;background:var(--sf2);border:1px solid var(--bd2);border-radius:7px;padding:.55rem .85rem;color:var(--tx);font-family:var(--mono);font-size:.8rem;outline:none;cursor:pointer}
+.cfg-select:focus{border-color:var(--ac)}
+
+/* MODAL */
+.ov{display:none;position:fixed;inset:0;background:rgba(10,14,26,.85);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center}
+.ov.open{display:flex}
+.modal{background:var(--sf);border:1px solid var(--bd2);border-radius:16px;padding:2rem;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 40px 80px rgba(0,0,0,.6);animation:su .22s ease}
+@keyframes su{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.mtitle{font-family:var(--serif);font-size:1.25rem;margin-bottom:.2rem;letter-spacing:-.02em}
+.msub{font-family:var(--mono);font-size:.65rem;color:var(--tx2);margin-bottom:1.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fg{margin-bottom:1.1rem}
+.fl{display:block;font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--tx2);margin-bottom:.35rem}
+.fi{width:100%;background:var(--sf2);border:1px solid var(--bd2);border-radius:7px;padding:.6rem .85rem;color:var(--tx);font-family:var(--mono);font-size:.83rem;transition:border-color .15s;outline:none}
+.fi:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--glow)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.auto-b{background:var(--adm);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:.75rem 1rem;margin-bottom:1.1rem;font-size:.72rem;color:var(--am);font-family:var(--mono)}
+.cbox{background:var(--sf2);border:1px solid var(--bd2);border-radius:8px;padding:1rem;margin:1.1rem 0}
+.cr{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:.72rem}
+.crl{color:var(--tx2);font-family:var(--mono);font-size:.67rem}
+.crv{font-family:var(--mono);font-weight:500}
+.cdiv{height:1px;background:var(--bd);margin:8px 0}
+.ct .crl{color:var(--tx);font-weight:600}
+.ct .crv{color:var(--gn);font-size:.88rem}
+.mact{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.4rem}
+.bcn{padding:.55rem 1.2rem;border:1px solid var(--bd2);background:transparent;color:var(--tx2);border-radius:7px;cursor:pointer;font-family:var(--sans);font-size:.78rem;transition:all .15s}
+.bcn:hover{border-color:var(--tx2);color:var(--tx)}
+.bsv{padding:.55rem 1.4rem;border:none;background:var(--ac);color:#fff;border-radius:7px;cursor:pointer;font-family:var(--sans);font-size:.78rem;font-weight:600;transition:all .15s}
+.bsv:hover{background:#2563eb;box-shadow:0 0 20px var(--glow)}
+
+/* MSG PREVIEW */
+#msgPreview{padding:1.4rem;font-family:var(--sans);font-size:.85rem;line-height:1.7;white-space:pre-wrap;min-height:200px;color:var(--tx2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--sf3);border:1px solid var(--bd2);border-radius:8px;padding:.75rem 1.25rem;font-family:var(--mono);font-size:.72rem;color:var(--tx);z-index:500;transform:translateY(60px);opacity:0;transition:all .3s;max-width:340px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-color:var(--gn);color:var(--gn)}
+
+/* PDF PRINT */
+@media print{
+  body *{visibility:hidden!important}
+  #printArea,#printArea *{visibility:visible!important}
+  #printArea{position:fixed;top:0;left:0;width:100%;background:white;padding:1.5cm;font-family:sans-serif}
+}
+</style>
+</head>
+<body>
+<div id="loginWrap" class="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">Mabus</div>
+    <div class="login-sub">Monitor de Licitações</div>
+    <input class="login-input" type="password" id="loginPwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="appWrap" class="app" style="display:none">
+<header>
+  <div class="logo"><span class="logo-m">Mabus</span><span class="logo-t">Licitações</span></div>
+  <div class="hdr-r">
+    <div class="live"></div>
+    <span class="sync-status" id="syncStatus">—</span>
+    <button class="btn" onclick="syncAll()"><span class="spin">↻</span> Sincronizar</button>
+    <button class="btn" onclick="openPdf()">⬇ PDF</button>
+    <button class="btn" onclick="doLogout()" style="color:var(--rd);border-color:var(--rd)">Sair</button>
+  </div>
+</header>
+
+<main>
+  <div class="week-bar">
+    <span class="ws-label">Semana</span>
+    <div class="ws-nav">
+      <button class="ws-btn" onclick="moveWeek(-1)">‹</button>
+      <span class="ws-range" id="wsRange">—</span>
+      <button class="ws-btn" onclick="moveWeek(1)">›</button>
+    </div>
+    <button class="ws-today" onclick="goToday()">Semana Atual</button>
+    <span style="font-family:var(--mono);font-size:.6rem;color:var(--tx3);margin-left:auto" id="lastSync">Nunca sincronizado</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tbtn active" data-tab="dash" onclick="switchTab('dash',this)">Dashboard</button>
+    <button class="tbtn" data-tab="hom" onclick="switchTab('hom',this)">Homologados</button>
+    <button class="tbtn" data-tab="pipeline" onclick="switchTab('pipeline',this)">Pipeline</button>
+    <button class="tbtn" data-tab="hist" onclick="switchTab('hist',this)">Histórico</button>
+    <button class="tbtn" data-tab="msg" onclick="switchTab('msg',this)">💬 Mensagem</button>
+    <button class="tbtn" data-tab="xl" onclick="switchTab('xl',this)">📊 Planilhas</button>
+    <button class="tbtn" data-tab="cfg" onclick="switchTab('cfg',this)">⚙️ Config</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="tc active" id="tc-dash">
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-lbl">Homologações</div><div class="kpi-val" id="kH">—</div><div class="kpi-d nu" id="kHd">—</div></div>
+      <div class="kpi g"><div class="kpi-lbl">Valor de Contratos</div><div class="kpi-val sm" id="kV">—</div><div class="kpi-d nu" id="kVd">—</div></div>
+      <div class="kpi g"><div class="kpi-lbl">Lucro Líquido</div><div class="kpi-val sm" id="kL">—</div><div class="kpi-d nu" id="kLd">—</div></div>
+      <div class="kpi a"><div class="kpi-lbl">Novas no Pipeline</div><div class="kpi-val" id="kN">—</div><div class="kpi-d nu" id="kNd">—</div></div>
+    </div>
+    <div class="info-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <div class="ctitle" style="margin:0">Crescimento Semanal</div>
+        <div style="display:flex;gap:1rem">
+          <div class="ileg"><div class="ileg-dot" style="background:#3b82f6"></div>Contratos</div>
+          <div class="ileg"><div class="ileg-dot" style="background:#10b981"></div>Lucro Líquido</div>
+        </div>
+      </div>
+      <div id="infoWeeks" style="width:100%"><div style="font-family:var(--mono);font-size:.72rem;color:var(--tx3);padding:1rem">Salve ao menos 1 snapshot para ver o infográfico</div></div>
+    </div>
+    <div class="crow">
+      <div class="ccard"><div class="ctitle">Evolução Semanal</div><div class="cwrap"><canvas id="cEv"></canvas></div></div>
+      <div class="ccard"><div class="ctitle">Pipeline por Fase</div><div class="cwrap"><canvas id="cFa"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- HOMOLOGADOS -->
+  <div class="tc" id="tc-hom">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:.75rem">
+      <div><div class="stitle">Processos Homologados</div><div class="ssub" style="margin:0">Coluna "Homologado" · sincronizado do Nextcloud Deck</div></div>
+    </div>
+    <div class="tsec">
+      <table class="dtbl">
+        <thead><tr><th>Licitação</th><th>Fonte</th><th>Data Homolog.</th><th>Valor Contrato</th><th>Custo</th><th>Imposto 7%</th><th>Lucro Líquido</th><th>Margem</th><th>Ação</th></tr></thead>
+        <tbody id="tbHom"><tr class="norow"><td colspan="9">Sincronize para carregar os dados do Deck</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="tc" id="tc-pipeline">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:.75rem">
+      <div><div class="stitle">Pipeline Ativo</div><div class="ssub" style="margin:0">Board Acompanhar · sincronizado do Nextcloud Deck</div></div>
+      <div class="tfilters">
+        <button class="fbtn act" onclick="fp('all',this)">Todos</button>
+        <button class="fbtn" onclick="fp('Documentos de Habilitação',this)">Habilitação</button>
+        <button class="fbtn" onclick="fp('Fase de Recurso',this)">Recurso</button>
+        <button class="fbtn" onclick="fp('Adjudicação',this)">Adjudicação</button>
+        <button class="fbtn" onclick="fp('Ata em preparo',this)">Ata</button>
+        <button class="fbtn" onclick="fp('🔥 Chance em alguns itens',this)">Chance</button>
+      </div>
+    </div>
+    <div class="tsec">
+      <table class="dtbl">
+        <thead><tr><th>Licitação</th><th>Fase</th><th>Prazo</th><th>Valor Contrato</th><th>Lucro Líquido</th><th>Margem</th><th>Ação</th></tr></thead>
+        <tbody id="tbPL"><tr class="norow"><td colspan="7">Sincronize para carregar o pipeline</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div class="tc" id="tc-hist">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem">
+      <div><div class="stitle">Histórico Semanal</div><div class="ssub" style="margin:0">Snapshots salvos toda sexta-feira</div></div>
+      <button class="btn btn-p" onclick="saveSnapshot()">💾 Salvar Snapshot</button>
+    </div>
+    <div class="sgrid" id="sgrid"></div>
+    <div class="ccard"><div class="ctitle">Homologações por semana</div><div class="cwrap" style="height:180px"><canvas id="cHist"></canvas></div></div>
+  </div>
+
+  <!-- MENSAGEM -->
+  <div class="tc" id="tc-msg">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:.75rem">
+      <div><div class="stitle">💬 Mensagem Semanal</div><div class="ssub" style="margin:0">Gerada automaticamente a partir das homologações</div></div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-p" onclick="gerarMensagem()">⚡ Gerar</button>
+        <button class="btn" onclick="copiarMensagem()">📋 Copiar</button>
+      </div>
+    </div>
+    <div class="ccard" style="margin-bottom:1.2rem">
+      <div class="ctitle">Introdução</div>
+      <textarea id="msgIntro" class="fi" rows="2" style="resize:vertical;font-size:.78rem;font-family:var(--sans);line-height:1.5;margin-top:.5rem">Bom dia, pessoal!! 🌟 Segue o relatório semanal de homologações.</textarea>
+      <div class="ctitle" style="margin-top:1rem">Encerramento</div>
+      <textarea id="msgOutro" class="fi" rows="3" style="resize:vertical;font-size:.78rem;font-family:var(--sans);line-height:1.5;margin-top:.5rem">Parabéns a toda a equipe por essa sequência linda de vitórias! 🚀
+Continuemos com essa dedicação e energia incrível! 🙏🏻</textarea>
+    </div>
+    <div class="tsec">
+      <div class="tbar"><span style="font-family:var(--mono);font-size:.65rem;color:var(--tx2)">Prévia</span><button class="btn" onclick="copiarMensagem()">📋 Copiar tudo</button></div>
+      <div id="msgPreview">Clique em "Gerar" para criar o relatório semanal.</div>
+    </div>
+  </div>
+
+  <!-- PLANILHAS -->
+  <div class="tc" id="tc-xl">
+    <div class="stitle">📊 Planilhas de Lances</div>
+    <div class="ssub">Faça upload uma vez por licitação — ficam salvas no servidor permanentemente</div>
+    <div class="ccard" style="margin-bottom:1.5rem">
+      <div class="ctitle">Adicionar planilha(s)</div>
+      <label style="display:flex;align-items:center;gap:.75rem;border:1px dashed var(--bd2);border-radius:8px;padding:.75rem 1rem;cursor:pointer;transition:all .2s;margin-top:.5rem" onmouseover="this.style.borderColor='var(--gn)'" onmouseout="this.style.borderColor='var(--bd2)'">
+        <input type="file" accept=".xlsx,.xls" multiple onchange="uploadPlanilhas(this)" style="display:none">
+        <span style="font-size:1.4rem">➕</span>
+        <div><div style="font-size:.78rem;font-weight:600">Selecionar planilha(s) .xlsx</div><div style="font-family:var(--mono);font-size:.6rem;color:var(--tx3);margin-top:2px">Múltiplos arquivos permitidos</div></div>
+      </label>
+      <div class="xl-list" id="xlList"><span style="font-family:var(--mono);font-size:.62rem;color:var(--tx3)">Nenhuma planilha carregada</span></div>
+    </div>
+  </div>
+
+  <div class="tc" id="tc-cfg">
+    <div class="stitle">⚙️ Configurações</div>
+    <div class="ssub">Status do sistema e configurações</div>
+    <div class="ccard" style="margin-bottom:1.5rem">
+      <div class="cfg-title">Boards configurados (fixos no backend)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.75rem">
+        <div style="background:var(--gdm);border:1px solid var(--gn);border-radius:8px;padding:.75rem 1rem">
+          <div style="font-family:var(--mono);font-size:.6rem;color:var(--gn);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem">Board · Acompanhar</div>
+          <div style="font-size:.8rem;font-weight:500">👀 Acompanhar <span style="font-family:var(--mono);font-size:.65rem;color:var(--tx3)">(ID: 79)</span></div>
+        </div>
+        <div style="background:var(--gdm);border:1px solid var(--gn);border-radius:8px;padding:.75rem 1rem">
+          <div style="font-family:var(--mono);font-size:.6rem;color:var(--gn);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem">Board · Processos Vencidos</div>
+          <div style="font-size:.8rem;font-weight:500">🏆 Processos Vencidos novo <span style="font-family:var(--mono);font-size:.65rem;color:var(--tx3)">(ID: 132)</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ccard" style="margin-bottom:1.5rem">
+      <div class="cfg-title">Como funciona a sincronização</div>
+      <div style="font-family:var(--mono);font-size:.72rem;color:var(--tx2);line-height:1.7;margin-top:.5rem">
+        Quando você clica em <strong style="color:var(--tx)">↻ Sincronizar</strong>, o backend chama a API da Anthropic com o MCP do Claudinho conectado. O Claude lê os boards do Nextcloud Deck em tempo real e retorna os dados estruturados. O resultado fica em cache no banco — ao reabrir o sistema, os dados do último sync aparecem instantaneamente.
+      </div>
+    </div>
+    <div class="ccard">
+      <div class="cfg-title">Status do Backend (Railway)</div>
+      <div id="ncStatus" style="font-family:var(--mono);font-size:.75rem;color:var(--tx2);margin-top:.5rem">Verificando...</div>
+      <button class="btn" style="margin-top:.75rem" onclick="checkNcStatus()">Verificar conexão</button>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- MODAL FINANCEIRO -->
+<div class="ov" id="ov" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+  <div class="mtitle">Dados Financeiros</div>
+  <div class="msub" id="mSub">—</div>
+  <div class="auto-b" id="autoBanner" style="display:none"></div>
+  <div class="frow">
+    <div class="fg"><label class="fl" for="fVC">Valor do Contrato (R$)</label><input class="fi" type="number" step="1" id="fVC" placeholder="139782" oninput="calcP()"></div>
+    <div class="fg"><label class="fl" for="fCusto">Custo Total dos Itens (R$)</label><input class="fi" type="number" step="1" id="fCusto" placeholder="32660" oninput="calcP()"></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label class="fl" for="fCotador">Responsável pela Cotação</label><input class="fi" type="text" id="fCotador" placeholder="Nome"></div>
+    <div class="fg"><label class="fl" for="fLances">Responsável pelos Lances</label><input class="fi" type="text" id="fLances" placeholder="Nome"></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label class="fl" for="fData">Data de Homologação</label><input class="fi" type="date" id="fData"></div>
+    <div class="fg"><label class="fl" for="fComissao">Comissão Estimada (R$)</label><input class="fi" type="number" step="1" id="fComissao" placeholder="0" oninput="calcP()"></div>
+  </div>
+  <div class="fg"><label class="fl" for="fObs">Observações</label><input class="fi" type="text" id="fObs" placeholder="Notas livres..."></div>
+  <div class="cbox">
+    <div class="cr"><span class="crl">Valor do Contrato</span><span class="crv" id="pVC">R$ —</span></div>
+    <div class="cr"><span class="crl">(-) Custo dos Itens</span><span class="crv" id="pCu" style="color:var(--rd)">R$ —</span></div>
+    <div class="cr"><span class="crl">= Lucro Bruto</span><span class="crv" id="pBr">R$ —</span></div>
+    <div class="cr"><span class="crl">(-) Simples Nacional 7%</span><span class="crv" id="pIm" style="color:var(--rd)">R$ —</span></div>
+    <div class="cdiv"></div>
+    <div class="cr ct"><span class="crl">💰 Lucro Líquido</span><span class="crv" id="pLi">R$ —</span></div>
+    <div class="cr"><span class="crl">Margem Líquida</span><span class="crv" id="pMa" style="color:var(--ac2)">— %</span></div>
+    <div class="cdiv"></div>
+    <div class="cr"><span class="crl">💸 Comissão Estimada</span><span class="crv" id="pCom" style="color:var(--am)">R$ —</span></div>
+  </div>
+  <div class="mact"><button class="bcn" onclick="closeModal()">Cancelar</button><button class="bsv" onclick="saveModal()">Salvar</button></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="printArea" style="display:none"></div>
+
+<script>
+// ════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════
+const API = (window.ENV_API_URL || 'http://localhost:3001');
+
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+let token = localStorage.getItem('mabus_token') || null;
+let S = {
+  acomp: [],
+  homCards: [],
+  planilhas: [],
+  fin: {},
+  snaps: [],
+  pFilter: 'all',
+  weekOffset: 0,
+  cfg: {},
+  boards: []
+};
+let modalId = null, charts = {};
+
+// ════════════════════════════════════════
+//  API HELPER
+// ════════════════════════════════════════
+async function api(method, path, body, isForm) {
+  const opts = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+  if (body && !isForm) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (isForm) {
+    opts.body = body; // FormData
+  }
+  const r = await fetch(`${API}${path}`, opts);
+  if (r.status === 401) { doLogout(); return null; }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════
+async function doLogin() {
+  const pwd = document.getElementById('loginPwd').value;
+  try {
+    const r = await fetch(`${API}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd })
+    });
+    if (!r.ok) { document.getElementById('loginErr').textContent = 'Senha incorreta'; return; }
+    const data = await r.json();
+    token = data.token;
+    localStorage.setItem('mabus_token', token);
+    showApp();
+  } catch (e) {
+    document.getElementById('loginErr').textContent = 'Erro ao conectar ao servidor. Verifique se o backend está rodando.';
+  }
+}
+
+function doLogout() {
+  token = null;
+  localStorage.removeItem('mabus_token');
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('loginWrap').style.display = 'flex';
+}
+
+function showApp() {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'block';
+  init();
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+async function init() {
+  await loadAll();
+  // Carrega cache do Deck (instantâneo, sem chamar Claude)
+  await loadDeckCache();
+  updateWeekDisplay();
+  refresh();
+  // Auto-sync a cada 5 minutos (chama Claude + Claudinho)
+  setInterval(syncAll, 5 * 60 * 1000);
+}
+
+async function loadAll() {
+  setSyncStatus('syncing', 'Carregando...');
+  try {
+    const [fin, snaps, planilhas] = await Promise.all([
+      api('GET', '/api/fin'),
+      api('GET', '/api/snaps'),
+      api('GET', '/api/planilhas')
+    ]);
+    if (fin) S.fin = fin;
+    if (snaps) S.snaps = snaps;
+    if (planilhas) S.planilhas = planilhas;
+    renderXlList();
+    setSyncStatus('ok', 'Dados financeiros carregados');
+  } catch (e) {
+    setSyncStatus('err', 'Servidor offline — verifique o Railway');
+  }
+}
+
+// Carrega último cache do Deck (sem chamar Claude — instantâneo)
+async function loadDeckCache() {
+  try {
+    const cache = await api('GET', '/api/sync/cache');
+    if (cache?.acomp?.length || cache?.homCards?.length) {
+      S.acomp = cache.acomp || [];
+      S.homCards = cache.homCards || [];
+      const t = cache.syncedAt ? new Date(cache.syncedAt).toLocaleTimeString('pt-BR') : '—';
+      document.getElementById('lastSync').textContent = `Último sync: ${t}`;
+      setSyncStatus('ok', `✓ ${S.acomp.length} no pipeline · ${S.homCards.length} homologadas`);
+      refresh();
+    }
+  } catch (e) { /* cache vazio, tudo bem */ }
+}
+
+// Sincroniza via Claude + Claudinho MCP (pode demorar 10-30s)
+async function syncAll() {
+  setSyncStatus('syncing', '⚡ Claude lendo o Deck...');
+  toast('Sincronizando via Claude + Claudinho — aguarde...', true);
+  try {
+    const result = await api('POST', '/api/sync', {});
+    if (!result) return;
+    S.acomp = result.acomp || [];
+    S.homCards = result.homCards || [];
+    if (result.fromCache) {
+      setSyncStatus('ok', `✓ Cache — ${S.acomp.length} pipeline · ${S.homCards.length} homologadas`);
+    } else {
+      document.getElementById('lastSync').textContent = `Último sync: ${new Date().toLocaleTimeString('pt-BR')}`;
+      setSyncStatus('ok', `✓ ${S.acomp.length} no pipeline · ${S.homCards.length} homologadas`);
+      toast(`✓ Sincronizado! ${S.acomp.length} no pipeline, ${S.homCards.length} homologadas`, true);
+    }
+    await autoMatch();
+    refresh();
+  } catch (e) {
+    setSyncStatus('err', 'Erro na sincronização');
+    toast('Erro: ' + e.message);
+  }
+}
+
+// Config simplificada — boards são fixos no backend, sem necessidade de selects
+async function checkNcStatus() {
+  const el = document.getElementById('ncStatus');
+  try {
+    await api('GET', '/api/health');
+    el.textContent = '✓ Backend online · Boards fixos: Acompanhar (79) · Processos Vencidos novo (132)';
+    el.style.color = 'var(--gn)';
+  } catch (e) {
+    el.textContent = '✗ Backend offline — verifique o Railway';
+    el.style.color = 'var(--rd)';
+  }
+}
+
+// ════════════════════════════════════════
+//  PLANILHAS
+// ════════════════════════════════════════
+async function uploadPlanilhas(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  let ok = 0;
+  for (const f of files) {
+    try {
+      const fd = new FormData();
+      fd.append('file', f);
+      const result = await api('POST', '/api/planilha', fd, true);
+      if (result) ok++;
+    } catch (e) { toast('Erro em ' + f.name + ': ' + e.message); }
+  }
+  input.value = '';
+  const planilhas = await api('GET', '/api/planilhas');
+  if (planilhas) S.planilhas = planilhas;
+  renderXlList();
+  autoMatch();
+  refresh();
+  toast(`✓ ${ok} planilha(s) salvas no servidor`, true);
+}
+
+async function removePlanilha(filename) {
+  await api('DELETE', `/api/planilhas/${encodeURIComponent(filename)}`);
+  S.planilhas = S.planilhas.filter(p => p.filename !== filename);
+  renderXlList();
+  autoMatch();
+  refresh();
+}
+
+function renderXlList() {
+  const el = document.getElementById('xlList');
+  if (!S.planilhas.length) {
+    el.innerHTML = '<span style="font-family:var(--mono);font-size:.62rem;color:var(--tx3)">Nenhuma planilha carregada</span>';
+    return;
+  }
+  el.innerHTML = S.planilhas.map(p =>
+    `<span class="xl-chip">📊 ${p.filename} <span class="xl-del" onclick="removePlanilha('${p.filename.replace(/'/g,"\\'")}')">✕</span></span>`
+  ).join('');
+}
+
+// ════════════════════════════════════════
+//  AUTO-MATCH planilha ↔ card
+// ════════════════════════════════════════
+function norm(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/municipio de |município de |prefeitura de |prefeitura municipal de /gi, '')
+    .replace(/[^a-z0-9 ]/g, '').trim();
+}
+function scoreMatch(a, b) {
+  const na = norm(a), nb = norm(b);
+  if (na === nb) return 1;
+  if (na.includes(nb) || nb.includes(na)) return 0.9;
+  const wa = na.split(' '), wb = nb.split(' ');
+  const sh = wa.filter(w => w.length > 2 && wb.some(x => x.includes(w) || w.includes(x)));
+  return sh.length / Math.max(wa.length, wb.length);
+}
+
+async function autoMatch() {
+  if (!S.homCards.length || !S.planilhas.length) return;
+  let n = 0;
+  const updates = [];
+  for (const card of S.homCards) {
+    if (S.fin[card.id]?.source === 'manual') continue;
+    let best = null, bestScore = 0, bestFile = '';
+    for (const p of S.planilhas) {
+      const s = scoreMatch(card.title, p.municipio);
+      if (s > bestScore) { bestScore = s; best = p; bestFile = p.filename; }
+    }
+    if (best && bestScore >= 0.4) {
+      const existing = S.fin[card.id] || {};
+      S.fin[card.id] = {
+        vc: Math.round(best.totalVenda),
+        custo: Math.round(best.totalCusto),
+        comissao: Math.round(best.totalComissao),
+        cotador: best.cotador || '',
+        lances: best.lances || '',
+        dataHomolog: existing.dataHomolog || new Date().toISOString().split('T')[0],
+        obs: existing.obs || '',
+        source: 'auto', matchedMun: best.municipio,
+        matchScore: bestScore, srcFile: bestFile
+      };
+      updates.push({ cardId: card.id, data: S.fin[card.id] });
+      n++;
+    }
+  }
+  // Persist matches to server
+  for (const u of updates) {
+    try { await api('POST', `/api/fin/${u.cardId}`, u.data); } catch (e) {}
+  }
+  if (n > 0) toast(`⚡ ${n} licitação(ões) cruzadas automaticamente`, true);
+}
+
+// ════════════════════════════════════════
+//  WEEK
+// ════════════════════════════════════════
+function getWeek(offset = 0) {
+  const now = new Date();
+  const ws = new Date(now);
+  ws.setDate(now.getDate() - now.getDay() + 1 + (offset * 7));
+  ws.setHours(0, 0, 0, 0);
+  const we = new Date(ws);
+  we.setDate(ws.getDate() + 6);
+  we.setHours(23, 59, 59, 999);
+  return { ws, we };
+}
+function moveWeek(dir) { S.weekOffset += dir; updateWeekDisplay(); refresh(); }
+function goToday() { S.weekOffset = 0; updateWeekDisplay(); refresh(); }
+function updateWeekDisplay() {
+  const { ws, we } = getWeek(S.weekOffset);
+  const fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  document.getElementById('wsRange').textContent = `${fmt(ws)} a ${fmt(we)} de ${we.getFullYear()}`;
+}
+
+// ════════════════════════════════════════
+//  REFRESH
+// ════════════════════════════════════════
+function refresh() {
+  const { ws, we } = getWeek(S.weekOffset);
+  const homSem = S.homCards.filter(c => {
+    const fin = S.fin[c.id];
+    if (!fin?.dataHomolog) return false;
+    const d = new Date(fin.dataHomolog + 'T12:00:00');
+    return d >= ws && d <= we;
+  });
+  const novas = S.acomp.filter(c => {
+    const ts = c.createdAt ? new Date(c.createdAt * 1000) : null;
+    return ts && ts >= ws && ts <= we;
+  });
+  let vT = 0, lT = 0;
+  for (const c of homSem) {
+    const fin = S.fin[c.id];
+    if (fin?.vc && fin?.custo) { const v = +fin.vc; vT += v; lT += v - +fin.custo - v * .07; }
+  }
+  const prev = S.snaps.length ? S.snaps[S.snaps.length - 1] : null;
+  setKPI('kH', homSem.length, prev?.hom, false);
+  setKPI('kV', vT, prev?.valor, true);
+  setKPI('kL', lT, prev?.lucro, true);
+  setKPI('kN', novas.length, prev?.novas, false);
+  renderHomTab();
+  renderPipeline();
+  renderChartEv();
+  renderChartFa();
+  renderInfoGraphic();
+  renderSnaps();
+  renderChartHist();
+}
+
+function setKPI(id, val, prev, money) {
+  document.getElementById(id).textContent = money ? fmtM(val) : val;
+  const de = document.getElementById(id + 'd');
+  if (prev !== undefined && prev !== null) {
+    const diff = val - prev, arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '—', cls = diff > 0 ? 'up' : diff < 0 ? 'dn' : 'nu';
+    de.textContent = `${arrow} ${money ? fmtM(Math.abs(diff)) : Math.abs(diff)} vs semana anterior`;
+    de.className = 'kpi-d ' + cls;
+  } else { de.textContent = 'Sem histórico anterior'; de.className = 'kpi-d nu'; }
+}
+
+// ════════════════════════════════════════
+//  INFOGRAPHIC SVG MONTANHA
+// ════════════════════════════════════════
+function renderInfoGraphic() {
+  const el = document.getElementById('infoWeeks');
+  const { ws, we } = getWeek(S.weekOffset);
+  let curHom = 0, curV = 0, curL = 0;
+  for (const c of S.homCards) {
+    const fin = S.fin[c.id];
+    if (fin?.dataHomolog) { const d = new Date(fin.dataHomolog + 'T12:00:00'); if (d >= ws && d <= we) { curHom++; if (fin.vc && fin.custo) { const v = +fin.vc; curV += v; curL += v - +fin.custo - v * .07; } } }
+  }
+  const data = [...S.snaps, { wl: 'Esta semana', hom: curHom, valor: curV, lucro: curL, _current: true }];
+  if (data.length < 2) { el.innerHTML = '<div style="font-family:var(--mono);font-size:.72rem;color:var(--tx3);padding:1rem">Salve ao menos 1 snapshot para ver o infográfico</div>'; return; }
+  const W = Math.max(el.offsetWidth || 800, 400), H = 200;
+  const PAD = { top: 28, right: 28, bottom: 44, left: 62 };
+  const cW = W - PAD.left - PAD.right, cH = H - PAD.top - PAD.bottom;
+  const n = data.length;
+  const xPos = i => n === 1 ? PAD.left + cW / 2 : PAD.left + (i / (n - 1)) * cW;
+  const maxV = Math.max(...data.map(d => d.valor), 1);
+  const maxL = Math.max(...data.map(d => d.lucro), 1);
+  const yV = v => PAD.top + cH - (v / maxV) * cH;
+  const yL = v => PAD.top + cH - (v / maxL) * cH;
+  function mp(vals, yFn) {
+    if (vals.length === 1) { const x = xPos(0), y = yFn(vals[0]); return `M${x - 1},${y} L${x + 1},${y}`; }
+    let d = `M${xPos(0)},${yFn(vals[0])}`;
+    for (let i = 1; i < vals.length; i++) { const x0 = xPos(i - 1), y0 = yFn(vals[i - 1]), x1 = xPos(i), y1 = yFn(vals[i]), cx = (x0 + x1) / 2; d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`; }
+    return d;
+  }
+  function ap(vals, yFn) {
+    const base = PAD.top + cH;
+    if (vals.length === 1) { const x = xPos(0); return `M${x},${yFn(vals[0])} L${x},${base}`; }
+    return mp(vals, yFn) + ` L${xPos(vals.length - 1)},${base} L${xPos(0)},${base} Z`;
+  }
+  const vVals = data.map(d => d.valor), lVals = data.map(d => d.lucro);
+  const yTicks = [0, .25, .5, .75, 1].map(t => ({ y: PAD.top + cH - t * cH, label: 'R$' + (maxV * t >= 1000000 ? ((maxV * t) / 1000000).toFixed(1) + 'M' : (maxV * t / 1000).toFixed(0) + 'k') }));
+  const gridLines = yTicks.map(t => `<line x1="${PAD.left}" y1="${t.y}" x2="${W - PAD.right}" y2="${t.y}" stroke="#1e2d4a" stroke-width="1"/>`).join('');
+  const yLabels = yTicks.map(t => `<text x="${PAD.left - 6}" y="${t.y + 4}" text-anchor="end" fill="#475569" font-size="9" font-family="DM Mono,monospace">${t.label}</text>`).join('');
+  const xLabels = data.map((d, i) => { const x = xPos(i), isCurr = !!d._current; return `<line x1="${x}" y1="${PAD.top}" x2="${x}" y2="${PAD.top + cH}" stroke="${isCurr ? 'rgba(59,130,246,.4)' : '#1e2d4a'}" stroke-width="${isCurr ? 1.5 : 1}" stroke-dasharray="${isCurr ? '' : '3,3'}"/><text x="${x}" y="${H - 6}" text-anchor="middle" fill="${isCurr ? '#60a5fa' : '#475569'}" font-size="9" font-family="DM Mono,monospace">${d.wl}</text>`; }).join('');
+  const vDots = data.map((d, i) => { const x = xPos(i), y = yV(d.valor), isCurr = !!d._current; return `<circle cx="${x}" cy="${y}" r="${isCurr ? 5 : 4}" fill="${isCurr ? '#60a5fa' : '#3b82f6'}" stroke="#0a0e1a" stroke-width="2"/><text x="${x}" y="${y - 10}" text-anchor="middle" fill="#60a5fa" font-size="8.5" font-family="DM Mono,monospace" font-weight="bold">${fmtM(d.valor)}</text>`; }).join('');
+  const lDots = data.map((d, i) => { const x = xPos(i), y = yL(d.lucro), isCurr = !!d._current; return `<circle cx="${x}" cy="${y}" r="${isCurr ? 5 : 4}" fill="${isCurr ? '#34d399' : '#10b981'}" stroke="#0a0e1a" stroke-width="2"/><text x="${x}" y="${y + 18}" text-anchor="middle" fill="#10b981" font-size="8.5" font-family="DM Mono,monospace">${fmtM(d.lucro)}</text>`; }).join('');
+  let trendBadge = '';
+  if (data.length >= 2) { const last = data[data.length - 1], prev2 = data[data.length - 2], diff = last.valor - prev2.valor, pct = prev2.valor > 0 ? Math.abs((diff / prev2.valor) * 100).toFixed(0) : '—', col = diff >= 0 ? '#10b981' : '#ef4444', arrow = diff >= 0 ? '▲' : '▼'; trendBadge = `<rect x="${W - PAD.right - 88}" y="${PAD.top}" width="84" height="20" rx="4" fill="${diff >= 0 ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)'}" stroke="${col}" stroke-width="1"/><text x="${W - PAD.right - 46}" y="${PAD.top + 13}" text-anchor="middle" fill="${col}" font-size="10" font-family="DM Mono,monospace" font-weight="bold">${arrow} ${pct}% contratos</text>`; }
+  el.innerHTML = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible"><defs><linearGradient id="gradV" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0.02"/></linearGradient><linearGradient id="gradL" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/><stop offset="100%" stop-color="#10b981" stop-opacity="0.02"/></linearGradient></defs>${gridLines}${xLabels}${yLabels}<path d="${ap(vVals, yV)}" fill="url(#gradV)"/><path d="${mp(vVals, yV)}" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round"/><path d="${ap(lVals, yL)}" fill="url(#gradL)"/><path d="${mp(lVals, yL)}" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round"/>${vDots}${lDots}${trendBadge}</svg>`;
+}
+
+// ════════════════════════════════════════
+//  TABLES
+// ════════════════════════════════════════
+function renderHomTab() {
+  const tb = document.getElementById('tbHom');
+  if (!S.homCards.length) { tb.innerHTML = '<tr class="norow"><td colspan="9">Sincronize para carregar os dados</td></tr>'; return; }
+  tb.innerHTML = S.homCards.map(c => {
+    const fin = S.fin[c.id] || {}, hasFin = fin.vc && fin.custo;
+    let vS, cS, iS, lS, mS;
+    if (hasFin) { const v = +fin.vc, cu = +fin.custo, imp = Math.round(v * .07), liq = v - cu - imp, m = (liq / v * 100).toFixed(1); vS = `<span class="mv">${fmtM(v)}</span>`; cS = `<span class="mv" style="color:var(--rd)">${fmtM(cu)}</span>`; iS = `<span class="mv" style="color:var(--am)">${fmtM(imp)}</span>`; lS = `<span class="mv mv-ok">${fmtM(liq)}</span>`; mS = `<span class="mv mv-ok">${m}%</span>`; }
+    else { vS = cS = iS = lS = mS = '<span class="mv mv-p">—</span>'; }
+    const srcB = fin.source === 'auto' ? `<span class="badge-auto">⚡ ${(fin.matchedMun || '').substring(0, 18)}</span>` : fin.source === 'manual' ? `<span class="badge-man">✓ manual</span>` : `<span style="color:var(--tx3);font-family:var(--mono);font-size:.6rem">pendente</span>`;
+    return `<tr><td class="tdname">${c.title}<small>${c.labels.slice(0, 3).join(' · ')}</small></td><td>${srcB}</td><td style="font-family:var(--mono);font-size:.68rem;color:var(--tx2)">${fin.dataHomolog || '—'}</td><td>${vS}</td><td>${cS}</td><td>${iS}</td><td>${lS}</td><td>${mS}</td><td><button class="${hasFin ? 'btn btn-g' : 'btn btn-p'}" style="font-size:.58rem;padding:3px 8px" onclick="openModal(${c.id})">${hasFin ? '✓ Editar' : '+ Dados'}</button></td></tr>`;
+  }).join('');
+}
+
+function renderPipeline() {
+  const tb = document.getElementById('tbPL');
+  const cards = S.pFilter === 'all' ? S.acomp : S.acomp.filter(c => c.stack === S.pFilter);
+  if (!S.acomp.length) { tb.innerHTML = '<tr class="norow"><td colspan="7">Sincronize para carregar o pipeline</td></tr>'; return; }
+  if (!cards.length) { tb.innerHTML = '<tr class="norow"><td colspan="7">Nenhuma licitação nesta fase</td></tr>'; return; }
+  tb.innerHTML = cards.map(c => {
+    const fin = S.fin[c.id] || {}, h = fin.vc && fin.custo;
+    let vS = '<span class="mv mv-p">—</span>', lS = '<span class="mv mv-p">—</span>', mS = '<span class="mv mv-p">—</span>';
+    if (h) { const v = +fin.vc, liq = v - +fin.custo - v * .07, m = (liq / v * 100).toFixed(1); vS = `<span class="mv">${fmtM(v)}</span>`; lS = `<span class="mv mv-ok">${fmtM(liq)}</span>`; mS = `<span class="mv mv-ok">${m}%</span>`; }
+    const due = c.duedate ? new Date(c.duedate).toLocaleDateString('pt-BR') : '—';
+    return `<tr><td class="tdname">${c.title}<small>${c.labels.slice(0, 3).join(' · ')}</small></td><td><span class="pill ${pc(c.stack)}">${c.stack}</span></td><td class="mv" style="font-size:.68rem;color:var(--tx2)">${due}</td><td>${vS}</td><td>${lS}</td><td>${mS}</td><td><button class="${h ? 'btn btn-g' : 'btn'}" style="font-size:.58rem;padding:3px 8px" onclick="openModal(${c.id})">${h ? '✓ Ver' : '+ Inserir'}</button></td></tr>`;
+  }).join('');
+}
+
+function fp(f, btn) { S.pFilter = f; document.querySelectorAll('.tfilters .fbtn').forEach(b => b.classList.remove('act')); btn.classList.add('act'); renderPipeline(); }
+
+// ════════════════════════════════════════
+//  CHARTS
+// ════════════════════════════════════════
+const gc = { gridColor: '#1e2d4a', tickColor: '#475569', font: { family: 'DM Mono', size: 10 } };
+
+function renderChartEv() {
+  const ctx = document.getElementById('cEv').getContext('2d');
+  const { ws, we } = getWeek(S.weekOffset);
+  let vT = 0, lT = 0;
+  for (const c of S.homCards) { const fin = S.fin[c.id]; if (fin?.dataHomolog && fin.vc && fin.custo) { const d = new Date(fin.dataHomolog + 'T12:00:00'); if (d >= ws && d <= we) { const v = +fin.vc; vT += v; lT += v - +fin.custo - v * .07; } } }
+  const labels = S.snaps.map(s => s.wl).concat(['Esta semana']);
+  const vD = S.snaps.map(s => s.valor).concat([vT]);
+  const lD = S.snaps.map(s => s.lucro).concat([lT]);
+  if (charts.ev) charts.ev.destroy();
+  charts.ev = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Valor Contratos', data: vD, backgroundColor: 'rgba(59,130,246,.35)', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4 }, { label: 'Lucro Líquido', data: lD, type: 'line', borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.15)', fill: true, tension: .4, pointBackgroundColor: '#10b981', pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8', font: gc.font } }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmtM(c.raw)}` } } }, scales: { x: { ticks: { color: gc.tickColor, font: gc.font }, grid: { color: gc.gridColor } }, y: { ticks: { color: gc.tickColor, font: gc.font, callback: v => 'R$' + (v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : (v / 1000).toFixed(0) + 'k') }, grid: { color: gc.gridColor } } } } });
+}
+
+function renderChartFa() {
+  const ctx = document.getElementById('cFa').getContext('2d');
+  if (!S.acomp.length) return;
+  const counts = {}; for (const c of S.acomp) counts[c.stack] = (counts[c.stack] || 0) + 1;
+  const labels = Object.keys(counts), data = Object.values(counts);
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#ef4444', '#64748b'];
+  if (charts.fa) charts.fa.destroy();
+  charts.fa = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderColor: '#111827', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'DM Mono', size: 9 }, boxWidth: 10, padding: 7 } } } } });
+}
+
+function renderChartHist() {
+  const ctx = document.getElementById('cHist').getContext('2d');
+  if (charts.hist) charts.hist.destroy();
+  charts.hist = new Chart(ctx, { type: 'line', data: { labels: S.snaps.map(s => s.wl), datasets: [{ label: 'Homologações', data: S.snaps.map(s => s.hom), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)', fill: true, tension: .4, pointBackgroundColor: '#3b82f6', pointRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: gc.tickColor, font: gc.font }, grid: { color: gc.gridColor } }, y: { ticks: { color: gc.tickColor, font: gc.font, stepSize: 1 }, grid: { color: gc.gridColor } } } } });
+}
+
+// ════════════════════════════════════════
+//  SNAPSHOT
+// ════════════════════════════════════════
+async function saveSnapshot() {
+  const { ws, we } = getWeek(S.weekOffset);
+  const fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const wl = `${fmt(ws)}/${ws.getFullYear().toString().slice(-2)}`;
+  let hom = 0, valor = 0, lucro = 0;
+  for (const c of S.homCards) { const fin = S.fin[c.id]; if (fin?.dataHomolog) { const d = new Date(fin.dataHomolog + 'T12:00:00'); if (d >= ws && d <= we) { hom++; if (fin.vc && fin.custo) { const v = +fin.vc; valor += v; lucro += v - +fin.custo - v * .07; } } } }
+  const novas = S.acomp.filter(c => { const ts = c.createdAt ? new Date(c.createdAt * 1000) : null; return ts && ts >= ws && ts <= we; }).length;
+  const snap = { wl, savedAt: new Date().toISOString(), hom, valor: Math.round(valor), lucro: Math.round(lucro), novas, pipeline: S.acomp.length };
+  await api('POST', '/api/snaps', snap);
+  const idx = S.snaps.findIndex(s => s.wl === wl);
+  if (idx >= 0) S.snaps[idx] = snap; else S.snaps.push(snap);
+  renderSnaps(); renderChartHist(); renderChartEv(); renderInfoGraphic();
+  toast(`Snapshot ${wl} salvo!`, true);
+}
+
+async function deleteSnap(wl) {
+  await api('DELETE', `/api/snaps/${encodeURIComponent(wl)}`);
+  S.snaps = S.snaps.filter(s => s.wl !== wl);
+  renderSnaps(); renderChartHist(); renderChartEv(); renderInfoGraphic();
+}
+
+function renderSnaps() {
+  const g = document.getElementById('sgrid');
+  const snaps = [...S.snaps].reverse();
+  if (!snaps.length) { g.innerHTML = '<div style="color:var(--tx3);font-family:var(--mono);font-size:.72rem;grid-column:1/-1;text-align:center;padding:2rem">Nenhum snapshot salvo.</div>'; return; }
+  g.innerHTML = snaps.map(s => `<div class="scard"><div class="sweek">${s.wl} <span class="sdel" onclick="deleteSnap('${s.wl}')">✕</span></div><div class="sbig">${s.hom} homolog.</div><div class="ssm">${fmtM(s.valor)} em contratos</div><div class="ssm g">${fmtM(s.lucro)} lucro líq.</div><div class="ssm" style="margin-top:3px">${s.novas} novas · ${s.pipeline} no pipeline</div></div>`).join('');
+}
+
+// ════════════════════════════════════════
+//  MODAL FINANCEIRO
+// ════════════════════════════════════════
+function openModal(id) {
+  modalId = id;
+  const card = [...S.acomp, ...S.homCards].find(c => c.id === id); if (!card) return;
+  document.getElementById('mSub').textContent = card.title;
+  const fin = S.fin[id] || {};
+  document.getElementById('fVC').value = fin.vc || '';
+  document.getElementById('fCusto').value = fin.custo || '';
+  document.getElementById('fCotador').value = fin.cotador || '';
+  document.getElementById('fLances').value = fin.lances || '';
+  document.getElementById('fData').value = fin.dataHomolog || new Date().toISOString().split('T')[0];
+  document.getElementById('fComissao').value = fin.comissao || '';
+  document.getElementById('fObs').value = fin.obs || '';
+  const ab = document.getElementById('autoBanner');
+  if (fin.source === 'auto') { ab.style.display = 'block'; ab.textContent = `⚡ Dados da planilha "${fin.srcFile}" — ${fin.matchedMun} (conf: ${Math.round((fin.matchScore || 0) * 100)}%). Confira.`; }
+  else ab.style.display = 'none';
+  calcP();
+  document.getElementById('ov').classList.add('open');
+}
+function closeModal() { document.getElementById('ov').classList.remove('open'); modalId = null; }
+function calcP() {
+  const v = Math.round(+document.getElementById('fVC').value || 0);
+  const cu = Math.round(+document.getElementById('fCusto').value || 0);
+  const com = Math.round(+document.getElementById('fComissao').value || 0);
+  const imp = Math.round(v * .07), bruto = v - cu, liq = bruto - imp, marg = v > 0 ? (liq / v * 100).toFixed(1) : 0;
+  document.getElementById('pVC').textContent = fmtM(v);
+  document.getElementById('pCu').textContent = '- ' + fmtM(cu);
+  document.getElementById('pBr').textContent = fmtM(bruto);
+  document.getElementById('pIm').textContent = '- ' + fmtM(imp);
+  document.getElementById('pLi').textContent = fmtM(liq);
+  document.getElementById('pMa').textContent = marg + '%';
+  document.getElementById('pCom').textContent = fmtM(com);
+}
+async function saveModal() {
+  if (!modalId) return;
+  const data = { vc: Math.round(+document.getElementById('fVC').value || 0), custo: Math.round(+document.getElementById('fCusto').value || 0), comissao: Math.round(+document.getElementById('fComissao').value || 0), cotador: document.getElementById('fCotador').value, lances: document.getElementById('fLances').value, dataHomolog: document.getElementById('fData').value, obs: document.getElementById('fObs').value, source: 'manual', at: new Date().toISOString() };
+  S.fin[modalId] = data;
+  await api('POST', `/api/fin/${modalId}`, data);
+  closeModal(); refresh(); toast('Salvo no servidor!', true);
+}
+
+// ════════════════════════════════════════
+//  MENSAGEM SEMANAL
+// ════════════════════════════════════════
+const EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+function perfMsg(m) {
+  if (m >= .35) return 'Lucro acima da média! Parabéns pela dedicação. 🎯';
+  if (m >= .25) return 'Ótima conversão com excelente precificação. 💡';
+  if (m >= .12) return 'Resultado sólido fruto de excelente estratégia. 🏆';
+  return 'Vitória técnica importante para o portfólio! ⭐';
+}
+function gerarMensagem() {
+  const { ws, we } = getWeek(S.weekOffset);
+  const homSem = S.homCards.filter(c => { const fin = S.fin[c.id]; if (!fin?.dataHomolog || !fin.vc) return false; const d = new Date(fin.dataHomolog + 'T12:00:00'); return d >= ws && d <= we; });
+  if (!homSem.length) { document.getElementById('msgPreview').textContent = 'Nenhuma homologação com dados financeiros esta semana.'; return; }
+  const intro = document.getElementById('msgIntro').value.trim();
+  const outro = document.getElementById('msgOutro').value.trim();
+  let totalC = 0, totalCom = 0;
+  const blocos = homSem.map((card, idx) => {
+    const fin = S.fin[card.id] || {}, vc = +fin.vc || 0, custo = +fin.custo || 0, com = +fin.comissao || 0, margem = vc > 0 ? (vc - custo) / vc : 0;
+    totalC += vc; totalCom += com;
+    const nome = card.title.replace(/\(.*?\)/g, '').trim().toUpperCase();
+    const partes = card.title.split(/\s*[-–]\s*/);
+    const objeto = partes.length > 1 ? partes.slice(1).join(' - ').replace(/\(.*?\)/g, '').trim() : 'Materiais e equipamentos';
+    const cotador = fin.cotador || '—', lances = fin.lances || '—';
+    let respStr = cotador === lances ? `@${cotador} pela cotação e participação!` : `@${cotador} pela cotação e @${lances} pela participação!`;
+    if (cotador === '—' && lances === '—') respStr = 'Equipe Mabus';
+    return [EMOJIS[idx] || `${idx + 1}.`, nome, `📦 Objeto: ${objeto}`, `💰 Valor: ${fmtMp(vc)}`, `🎯 Performance: ${perfMsg(margem)}`, `👤 Responsável: ${respStr}`, com > 0 ? `💸 Comissão Estimada: ${fmtMp(com)}` : ''].filter(Boolean).join('\n');
+  });
+  const msg = [intro, '', `📊 RELATÓRIO SEMANAL DE HOMOLOGAÇÕES`, '👇 Confiram as homologações da semana:', '', blocos.join('\n\n'), '', `💰 TOTAL GERAL: ${fmtMp(totalC)}`, totalCom > 0 ? `💸 TOTAL EM COMISSÕES ESTIMADAS: ${fmtMp(totalCom)}` : '', '', outro].filter(l => l !== undefined).join('\n');
+  document.getElementById('msgPreview').textContent = msg;
+  document.getElementById('msgPreview').style.color = 'var(--tx)';
+  toast('Mensagem gerada!', true);
+}
+function copiarMensagem() {
+  const txt = document.getElementById('msgPreview').textContent;
+  if (!txt || txt.includes('Clique')) return toast('Gere a mensagem primeiro');
+  navigator.clipboard.writeText(txt).then(() => toast('Copiado! ✓', true)).catch(() => { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); toast('Copiado!', true); });
+}
+
+// ════════════════════════════════════════
+//  PDF
+// ════════════════════════════════════════
+function openPdf() {
+  const { ws, we } = getWeek(S.weekOffset);
+  const fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const wl = `${fmt(ws)} a ${fmt(we)} de ${we.getFullYear()}`;
+  let hom = 0, vT = 0, lT = 0;
+  const rows = [];
+  for (const c of S.homCards) { const fin = S.fin[c.id]; if (fin?.dataHomolog) { const d = new Date(fin.dataHomolog + 'T12:00:00'); if (d >= ws && d <= we) { hom++; let v = 0, cu = 0, imp = 0, liq = 0, marg = '—'; if (fin.vc && fin.custo) { v = +fin.vc; cu = +fin.custo; imp = Math.round(v * .07); liq = v - cu - imp; marg = (liq / v * 100).toFixed(1) + '%'; vT += v; lT += liq; } rows.push({ title: c.title, v, cu, imp, liq, marg, src: fin.source, cotador: fin.cotador || '', lances: fin.lances || '' }); } } }
+  const novas = S.acomp.filter(c => { const ts = c.createdAt ? new Date(c.createdAt * 1000) : null; return ts && ts >= ws && ts <= we; }).length;
+  const prev = S.snaps.length ? S.snaps[S.snaps.length - 1] : null;
+  const delta = (curr, pv) => pv != null ? `${curr > pv ? '↑' : curr < pv ? '↓' : '='} vs semana anterior` : '—';
+  const manyRows = rows.length > 6 || S.snaps.length > 8;
+  const orientation = manyRows ? 'landscape' : 'portrait';
+  const tblRows = rows.map((r, i) => `<tr style="background:${i % 2 ? '#f8fafc' : '#fff'}"><td>${r.title}</td><td class="vg">${r.v ? fmtMp(r.v) : '—'}</td><td class="vr">${r.cu ? fmtMp(r.cu) : '—'}</td><td class="va">${r.imp ? fmtMp(r.imp) : '—'}</td><td class="vg" style="font-weight:700">${r.liq ? fmtMp(r.liq) : '—'}</td><td class="vg">${r.marg}</td><td style="color:#64748b;font-size:.7em">${r.cotador || r.lances ? `${r.cotador}${r.cotador && r.lances ? ' / ' : ''}${r.lances}` : r.src === 'auto' ? '⚡ Planilha' : '✓ Manual'}</td></tr>`).join('');
+  const histRows = [...S.snaps].reverse().map((s, i) => `<tr style="background:${i % 2 ? '#f8fafc' : '#fff'}"><td>${s.wl}</td><td style="text-align:center;font-weight:700">${s.hom}</td><td class="vg">${fmtMp(s.valor)}</td><td class="vg">${fmtMp(s.lucro)}</td><td style="text-align:center">${s.novas}</td><td style="text-align:center">${s.pipeline}</td></tr>`).join('');
+  const totalRow = rows.length ? `<tr style="background:#1a3a5c"><td style="color:#fff;font-weight:700">TOTAL</td><td style="color:#93c5fd;font-weight:700">${fmtMp(vT)}</td><td>—</td><td>—</td><td style="color:#6ee7b7;font-weight:700">${fmtMp(lT)}</td><td style="color:#6ee7b7;font-weight:700">${vT > 0 ? (lT / vT * 100).toFixed(1) + '%' : '—'}</td><td></td></tr>` : '';
+  const pa = document.getElementById('printArea');
+  pa.style.display = 'block';
+  pa.innerHTML = `<style>@page{size:A4 ${orientation};margin:1.2cm}*{box-sizing:border-box}body{font-family:'Outfit',Arial,sans-serif;font-size:13px;color:#111;margin:0;background:#fff}h1{font-family:Georgia,serif;font-size:24px;color:#1a3a5c;margin:0 0 4px;border-bottom:3px solid #3b82f6;padding-bottom:8px}h2{font-family:Georgia,serif;font-size:16px;color:#2563eb;margin:18px 0 8px}.meta{font-size:11px;color:#64748b;font-family:monospace;margin-bottom:16px}.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}.pk{border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;border-top:4px solid #3b82f6}.pk.g{border-top-color:#10b981}.pk.a{border-top-color:#f59e0b}.pkl{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#64748b;font-family:monospace;margin-bottom:5px}.pkv{font-family:Georgia,serif;font-size:22px;color:#1e293b;line-height:1}.pks{font-size:10px;color:#94a3b8;font-family:monospace;margin-top:3px}table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px}thead th{background:#1a3a5c;color:#fff;padding:8px 10px;text-align:left;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:.05em}tbody td{padding:7px 10px;border-bottom:1px solid #e2e8f0;vertical-align:middle}.vg{color:#059669;font-family:monospace}.vr{color:#dc2626;font-family:monospace}.va{color:#d97706;font-family:monospace}.ft{margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;font-family:monospace;display:flex;justify-content:space-between}</style><div><h1>Relatório Semanal de Licitações</h1><div class="meta">Semana: ${wl} · Pipeline: ${S.acomp.length} licitações · Homologadas: ${S.homCards.length}</div><div class="krow"><div class="pk"><div class="pkl">Homologações</div><div class="pkv">${hom}</div><div class="pks">${delta(hom, prev?.hom)}</div></div><div class="pk g"><div class="pkl">Valor de Contratos</div><div class="pkv">${fmtMp(vT)}</div><div class="pks">${delta(vT, prev?.valor)}</div></div><div class="pk g"><div class="pkl">Lucro Líquido</div><div class="pkv">${fmtMp(lT)}</div><div class="pks">${delta(lT, prev?.lucro)}</div></div><div class="pk a"><div class="pkl">Novas no Pipeline</div><div class="pkv">${novas}</div><div class="pks">${delta(novas, prev?.novas)}</div></div></div>${rows.length ? `<h2>Homologações da Semana</h2><table><thead><tr><th>Licitação</th><th>Contrato</th><th>Custo</th><th>Imposto 7%</th><th>Lucro Líquido</th><th>Margem</th><th>Responsável</th></tr></thead><tbody>${tblRows}${totalRow}</tbody></table>` : '<p style="color:#94a3b8;font-family:monospace;font-size:12px;margin-top:8px">Nenhuma homologação esta semana.</p>'}${S.snaps.length ? `<h2>Histórico</h2><table><thead><tr><th>Semana</th><th style="text-align:center">Homolog.</th><th>Contratos</th><th>Lucro Líq.</th><th style="text-align:center">Novas</th><th style="text-align:center">Pipeline</th></tr></thead><tbody>${histRows}</tbody></table>` : ''}<div class="ft"><span>Mabus Empresarial LTDA · Jaborandi, SP</span><span>Semana: ${wl}</span></div></div>`;
+  setTimeout(() => { window.print(); setTimeout(() => { pa.style.display = 'none'; pa.innerHTML = ''; }, 1000); }, 200);
+}
+
+// ════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════
+function switchTab(name, btn) {
+  document.querySelectorAll('.tc').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tc-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'dash') { renderChartEv(); renderChartFa(); }
+  if (name === 'hist') renderChartHist();
+  if (name === 'cfg') checkNcStatus();
+}
+
+// ════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════
+function setSyncStatus(type, msg) {
+  const el = document.getElementById('syncStatus');
+  el.textContent = msg;
+  el.className = 'sync-status ' + type;
+}
+function pc(s) {
+  if (s?.includes('Habilitação')) return 'p-h'; if (s?.includes('Recurso')) return 'p-r';
+  if (s?.includes('Adjudicação')) return 'p-a'; if (s?.includes('Ata')) return 'p-at';
+  if (s?.includes('Chance')) return 'p-c'; return 'p-o';
+}
+function fmtM(v) { if (!v && v !== 0) return '—'; return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v); }
+function fmtMp(v) { if (!v && v !== 0) return '—'; return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(v); }
+function toast(msg, ok = false) { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast' + (ok ? ' ok' : ''); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3200); }
+
+// ════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════
+if (token) { showApp(); } else { document.getElementById('loginWrap').style.display = 'flex'; }
+</script>
+</body>
+</html>
